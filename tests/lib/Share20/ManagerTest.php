@@ -26,6 +26,7 @@ use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
+use OCP\Files\IUserFolder;
 use OCP\Files\Mount\IMountManager;
 use OCP\Files\Mount\IMountPoint;
 use OCP\Files\Mount\IMovableMount;
@@ -1206,7 +1207,7 @@ class ManagerTest extends \Test\TestCase {
 			['group0', true],
 		]);
 
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(IUserFolder::class);
 
 		$userFolder
 			->method('getId')
@@ -1283,7 +1284,7 @@ class ManagerTest extends \Test\TestCase {
 			['user1', $this->createMock(IUser::class)],
 		]);
 
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(IUserFolder::class);
 		$userFolder
 			->method('isSubNode')
 			->with($userFolder)
@@ -4292,8 +4293,9 @@ class ManagerTest extends \Test\TestCase {
 		Util::connectHook('OCP\Share', 'post_set_expiration_date', $hookListener, 'post');
 		$hookListener->expects($this->never())->method('post');
 
-		$this->rootFolder->method('getUserFolder')->with('newUser')->willReturnSelf();
-		$this->rootFolder->method('getRelativePath')->with('/newUser/files/myPath')->willReturn('/myPath');
+		$userFolder = $this->createMock(IUserFolder::class);
+		$userFolder->method('getRelativePath')->with('/newUser/files/myPath')->willReturn('/myPath');
+		$this->rootFolder->method('getUserFolder')->with('newUser')->willReturn($userFolder);
 
 		$hookListener2 = $this->createMock(DummyShareManagerListener::class);
 		Util::connectHook('OCP\Share', 'post_update_permissions', $hookListener2, 'post');
@@ -5366,7 +5368,7 @@ class ManagerTest extends \Test\TestCase {
 		$node->method('getId')
 			->willReturn(42);
 
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(IUserFolder::class);
 		$file = $this->createMock(File::class);
 		$folder = $this->createMock(Folder::class);
 
@@ -5465,7 +5467,7 @@ class ManagerTest extends \Test\TestCase {
 		$node->method('getId')
 			->willReturn(42);
 
-		$userFolder = $this->createMock(Folder::class);
+		$userFolder = $this->createMock(IUserFolder::class);
 		$file = $this->createMock(File::class);
 
 		$owner = $this->createMock(IUser::class);
