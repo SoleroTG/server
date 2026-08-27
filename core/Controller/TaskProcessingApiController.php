@@ -28,6 +28,7 @@ use OCP\Files\NotPermittedException;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\Lock\LockedException;
+use OCP\Security\IRemoteHostValidator;
 use OCP\TaskProcessing\Exception\Exception;
 use OCP\TaskProcessing\Exception\NotFoundException;
 use OCP\TaskProcessing\Exception\PreConditionNotMetException;
@@ -53,6 +54,7 @@ class TaskProcessingApiController extends OCSController {
 		private IRootFolder $rootFolder,
 		private IAppData $appData,
 		private IMimeTypeDetector $mimeTypeDetector,
+		private IRemoteHostValidator $remoteHostValidator,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -167,6 +169,18 @@ class TaskProcessingApiController extends OCSController {
 		bool $preferStreaming = false,
 	): DataResponse {
 		$task = new Task($type, $input, $appId, $this->userId, $customId);
+		if ($webhookUri !== null && $webhookUri !== ''
+			&& str_starts_with((string)$webhookMethod, 'HTTP:')) {
+			$parsed = parse_url($webhookUri);
+			$host = $parsed['host'] ?? null;
+			$scheme = strtolower($parsed['scheme'] ?? '');
+			if (!is_string($host) || $host === ''
+				|| !in_array($scheme, ['http', 'https'], true)
+				|| !$this->remoteHostValidator->isValid($host)) {
+				return new DataResponse(['message' => 'Bad webhook URI'],
+					Http::STATUS_BAD_REQUEST);
+			}
+		}
 		$task->setWebhookUri($webhookUri);
 		$task->setWebhookMethod($webhookMethod);
 		$task->setIncludeWatermark($includeWatermark);
