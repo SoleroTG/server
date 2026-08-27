@@ -13,8 +13,11 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaDiff;
 use Doctrine\DBAL\Schema\TableDiff;
 use Doctrine\DBAL\Types\Types;
+use OC\App\AppManager;
 use OC\Migration\NullOutput;
+use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
+use OCP\IAppConfig;
 
 /**
  * Compares the live database schema against the schema expected for the
@@ -24,18 +27,21 @@ use OCP\App\IAppManager;
 class SchemaChecker {
 	public function __construct(
 		private readonly Connection $connection,
+		private readonly IAppConfig $appConfig,
 		private readonly IAppManager $appManager,
 	) {
 	}
 
 	/**
-	 * @return list<array{table: string, type: string, name?: string, changes?: list<string>}>
+	 * @return list<array{table: string, type: string, name?: string, changes?: list<string>, app: ?string, enabled: bool}>
 	 */
 	public function getFindings(?string $onlyTable = null): array {
 		$expectedSchema = new Schema();
-		$this->applyMigrations('core', $expectedSchema);
-		foreach ($this->appManager->getEnabledApps() as $app) {
-			$this->applyMigrations($app, $expectedSchema);
+		$tableOwners = [];
+		$this->applyMigrations('core', $expectedSchema, $tableOwners);
+		// Disabled apps keep their tables, so replay their migrations too.
+		foreach (array_keys($this->appConfig->getAppInstalledVersions()) as $app) {
+			$this->applyMigrations($app, $expectedSchema, $tableOwners);
 		}
 		$this->addMigrationsTable($expectedSchema);
 		$this->materializeUniqueConstraints($expectedSchema);
@@ -50,11 +56,19 @@ class SchemaChecker {
 		$comparator = $this->connection->createSchemaManager()->createComparator();
 		$diff = $comparator->compareSchemas($liveSchema, $expectedSchema);
 
-		return $this->buildFindings($diff);
+		$enabledApps = array_flip($this->appManager->getEnabledApps());
+
+		return array_map(function (array $finding) use ($tableOwners, $enabledApps): array {
+			$app = $tableOwners[$finding['table']] ?? null;
+			$finding['app'] = $app;
+			// Only tables owned by a disabled app are non-blocking.
+			$finding['enabled'] = $app === null || $app === 'core' || isset($enabledApps[$app]);
+			return $finding;
+		}, $this->buildFindings($diff));
 	}
 
 	/**
-	 * @param array{table: string, type: string, name?: string, changes?: list<string>} $finding
+	 * @param array{table: string, type: string, name?: string, changes?: list<string>, app?: ?string, enabled?: bool} $finding
 	 */
 	public function formatFinding(array $finding): string {
 		return match ($finding['type']) {
@@ -69,7 +83,28 @@ class SchemaChecker {
 		};
 	}
 
-	private function applyMigrations(string $app, Schema $schema): void {
+	/**
+	 * @param array<string, string> $tableOwners table name => owning app id, updated in place
+	 */
+	private function applyMigrations(string $app, Schema $schema, array &$tableOwners): void {
+		if ($app !== 'core') {
+			try {
+				$appPath = $this->appManager->getAppPath($app);
+			} catch (AppPathNotFoundException) {
+				// Installed, but code is gone: no migrations to replay.
+				return;
+			}
+			// Disabled apps are not autoloaded on boot.
+			/** @var AppManager $appManager */
+			$appManager = $this->appManager;
+			$appManager->registerAutoloading($app, $appPath);
+		}
+
+		$existingTables = [];
+		foreach ($schema->getTables() as $table) {
+			$existingTables[$table->getName()] = true;
+		}
+
 		$output = new NullOutput();
 		$ms = new MigrationService($app, $this->connection, $output);
 		foreach ($ms->getAvailableVersions() as $version) {
@@ -77,6 +112,12 @@ class SchemaChecker {
 			$migration->changeSchema($output, function () use (&$schema) {
 				return new SchemaWrapper($this->connection, $schema);
 			}, []);
+		}
+
+		foreach ($schema->getTables() as $table) {
+			if (!isset($existingTables[$table->getName()])) {
+				$tableOwners[$table->getName()] = $app;
+			}
 		}
 	}
 

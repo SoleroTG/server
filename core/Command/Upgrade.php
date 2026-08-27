@@ -252,9 +252,25 @@ class Upgrade extends Command {
 			return;
 		}
 
-		$output->writeln('<comment>The database schema does not match what is expected for the installed version:</comment>');
+		$byApp = [];
 		foreach ($findings as $finding) {
+			$byApp[$finding['enabled'] ? '' : $finding['app']][] = $finding;
+		}
+
+		$output->writeln('<comment>The database schema does not match what is expected for the installed version:</comment>');
+		foreach ($byApp[''] ?? [] as $finding) {
 			$output->writeln('  - ' . $this->schemaChecker->formatFinding($finding));
+		}
+		unset($byApp['']);
+
+		if ($byApp !== []) {
+			$output->writeln('<comment>Disabled apps:</comment>');
+			foreach ($byApp as $app => $appFindings) {
+				$output->writeln("  {$app}:");
+				foreach ($appFindings as $finding) {
+					$output->writeln('    - ' . $this->schemaChecker->formatFinding($finding));
+				}
+			}
 		}
 		$output->writeln('<comment>Run "occ db:schema:check" for details.</comment>');
 	}

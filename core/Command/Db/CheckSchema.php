@@ -37,18 +37,45 @@ class CheckSchema extends Base {
 		$onlyTable = $input->getArgument('table');
 		$findings = $this->schemaChecker->getFindings($onlyTable);
 
+		$blocking = array_values(array_filter($findings, static fn (array $finding): bool => $finding['enabled']));
+
 		if ($input->getOption('output') === self::OUTPUT_FORMAT_PLAIN) {
 			if ($findings === []) {
 				$output->writeln('<info>The live database schema matches the expected schema.</info>');
 			} else {
-				foreach ($findings as $finding) {
+				foreach ($blocking as $finding) {
 					$output->writeln('<comment>' . $this->schemaChecker->formatFinding($finding) . '</comment>');
 				}
+				$this->printDisabledAppFindings($findings, $output);
 			}
 		} else {
 			$this->writeArrayInOutputFormat($input, $output, $findings);
 		}
 
-		return $findings === [] ? 0 : 1;
+		return $blocking === [] ? 0 : 1;
+	}
+
+	/**
+	 * @param list<array{table: string, type: string, name?: string, changes?: list<string>, app: ?string, enabled: bool}> $findings
+	 */
+	private function printDisabledAppFindings(array $findings, OutputInterface $output): void {
+		$byApp = [];
+		foreach ($findings as $finding) {
+			if (!$finding['enabled']) {
+				$byApp[$finding['app']][] = $finding;
+			}
+		}
+
+		if ($byApp === []) {
+			return;
+		}
+
+		$output->writeln('Disabled apps (not affecting exit code):');
+		foreach ($byApp as $app => $appFindings) {
+			$output->writeln("  {$app}:");
+			foreach ($appFindings as $finding) {
+				$output->writeln('    - <comment>' . $this->schemaChecker->formatFinding($finding) . '</comment>');
+			}
+		}
 	}
 }
