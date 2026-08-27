@@ -386,7 +386,8 @@
                     "display_name",
                     "icon",
                     "secret",
-                    "initiator"
+                    "initiator",
+                    "permissions"
                 ],
                 "properties": {
                     "class": {
@@ -440,6 +441,12 @@
                                 "$ref": "#/components/schemas/User"
                             }
                         ]
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Permission"
+                        }
                     }
                 }
             },

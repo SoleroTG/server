@@ -4653,7 +4653,8 @@
                     "display_name",
                     "icon",
                     "secret",
-                    "initiator"
+                    "initiator",
+                    "permissions"
                 ],
                 "properties": {
                     "class": {
@@ -4707,6 +4708,12 @@
                                 "$ref": "#/components/schemas/SharingUser"
                             }
                         ]
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SharingPermission"
+                        }
                     }
                 }
             },

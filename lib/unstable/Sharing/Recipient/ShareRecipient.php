@@ -11,6 +11,8 @@ namespace NCU\Sharing\Recipient;
 
 use NCU\Sharing\Icon\ShareIconURL;
 use NCU\Sharing\ISharingRegistry;
+use NCU\Sharing\Permission\ISharePermissionType;
+use NCU\Sharing\Permission\SharePermission;
 use NCU\Sharing\Share;
 use NCU\Sharing\ShareUser;
 use OCP\AppFramework\Attribute\Consumable;
@@ -24,24 +26,37 @@ use RuntimeException;
  * @experimental 35.0.0
  */
 #[Consumable(since: '35.0.0')]
-final readonly class ShareRecipient {
+final class ShareRecipient {
+	/** @var array<class-string<ISharePermissionType>, SharePermission> $enabledPermissions */
+	private ?array $enabledPermissions = null;
+
 	/**
 	 * @experimental 35.0.0
 	 */
 	public function __construct(
 		/** @var class-string<IShareRecipientType> $class */
-		public string $class,
+		public readonly string $class,
 		/** @var non-empty-string $value */
-		public string $value,
+		public readonly string $value,
 		/** @var ?non-empty-string $instance */
-		public ?string $instance,
+		public readonly ?string $instance,
 		/** @var ?non-empty-string $secret */
-		public ?string $secret = null,
-		public ?ShareUser $initiator = null,
+		public readonly ?string $secret = null,
+		public readonly ?ShareUser $initiator = null,
+		/** @var array<class-string<ISharePermissionType>, SharePermission> $permissions */
+		public readonly array $permissions = [],
 	) {
 		if ($instance !== null && !preg_match('/^https?:\/\/.+/', $instance)) {
 			throw new RuntimeException('The instance is not a valid absolute URL: ' . $instance);
 		}
+	}
+
+	/**
+	 * @return array<class-string<ISharePermissionType>, SharePermission>
+	 * @experimental 35.0.0
+	 */
+	public function getEnabledPermissions(): array {
+		return $this->enabledPermissions ??= array_filter($this->permissions, static fn (SharePermission $permission): bool => $permission->enabled);
 	}
 
 	/**
@@ -94,6 +109,7 @@ final readonly class ShareRecipient {
 			'icon' => $icon->format(),
 			'secret' => $secret,
 			'initiator' => $this->initiator?->format($userManager),
+			'permissions' => SharePermission::formatMultiple($registry, $l10nFactory, array_values($this->permissions)),
 		];
 	}
 
@@ -112,8 +128,8 @@ final readonly class ShareRecipient {
 			++$recipientDisplayNames[$displayName];
 		}
 
-		// First sort by instance, then by class and finally by value to get a stable order regardless of the DB order
-		usort($recipients, static fn (ShareRecipient $a, ShareRecipient $b): int => 4 * ($a->instance === null ? -1 : ($a->instance <=> $b->instance)) + 2 * ($a->class <=> $b->class) + ($a->value <=> $b->value));
+		// First sort by number of enabled permissions, then by instance, then by class and finally by value to get a stable order regardless of the DB order
+		usort($recipients, static fn (ShareRecipient $a, ShareRecipient $b): int => 8 * (count($b->getEnabledPermissions()) <=> count($a->getEnabledPermissions())) + 4 * ($a->instance === null ? -1 : ($a->instance <=> $b->instance)) + 2 * ($a->class <=> $b->class) + ($a->value <=> $b->value));
 
 		return array_map(static fn (ShareRecipient $recipient): array => $recipient->format($registry, $l10nFactory, $urlGenerator, $userManager, $recipientDisplayNames[$recipientTypes[$recipient->class]?->getRecipientDisplayName($recipient->value) ?? $recipient->value] === 1), $recipients);
 	}
