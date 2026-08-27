@@ -21,7 +21,7 @@
 					<template #avatar>
 						<NcAvatar
 							:user="sharedWithMe.user"
-							:display-name="sharedWithMe.displayName"
+							:displayName="sharedWithMe.displayName"
 							class="sharing-entry__avatar" />
 					</template>
 				</SharingEntrySimple>
@@ -40,10 +40,21 @@
 				{{ t('files_sharing', 'Share') }}
 			</NcButton>
 
-			<section>
+			<!-- Unified flat share list: all shares, ordered by permission -->
+			<section v-if="config.sharingDialogEnabled">
+				<UnifiedShareList
+					v-if="!loading"
+					:shares="unifiedShares"
+					:fileInfo="fileInfo"
+					@refresh="getShares" />
+				<!-- internal link copy -->
+				<SharingEntryInternal :fileInfo="fileInfo" />
+			</section>
+
+			<section v-if="!config.sharingDialogEnabled">
 				<div class="section-header">
 					<h4>{{ t('files_sharing', 'Internal shares') }}</h4>
-					<NcPopover popup-role="dialog">
+					<NcPopover popupRole="dialog">
 						<template #trigger>
 							<NcButton
 								class="hint-icon"
@@ -62,33 +73,33 @@
 				<!-- add new share input -->
 				<SharingInput
 					v-if="!loading && !config.sharingDialogEnabled"
-					:can-reshare="canReshare"
-					:file-info="fileInfo"
-					:link-shares="linkShares"
+					:canReshare="canReshare"
+					:fileInfo="fileInfo"
+					:linkShares="linkShares"
 					:reshare="reshare"
 					:shares="shares"
 					:placeholder="internalShareInputPlaceholder"
-					@open-sharing-details="toggleShareDetailsView" />
+					@openSharingDetails="toggleShareDetailsView" />
 
 				<!-- other shares list -->
 				<SharingList
 					v-if="!loading"
 					ref="shareList"
 					:shares="shares"
-					:file-info="fileInfo"
-					@open-sharing-details="toggleShareDetailsView" />
+					:fileInfo="fileInfo"
+					@openSharingDetails="toggleShareDetailsView" />
 
 				<!-- inherited shares -->
-				<SharingInherited v-if="canReshare && !loading" :file-info="fileInfo" />
+				<SharingInherited v-if="canReshare && !loading" :fileInfo="fileInfo" />
 
 				<!-- internal link copy -->
-				<SharingEntryInternal :file-info="fileInfo" />
+				<SharingEntryInternal :fileInfo="fileInfo" />
 			</section>
 
-			<section v-if="config.showExternalSharing">
+			<section v-if="config.showExternalSharing && !config.sharingDialogEnabled">
 				<div class="section-header">
 					<h4>{{ t('files_sharing', 'External shares') }}</h4>
-					<NcPopover popup-role="dialog">
+					<NcPopover popupRole="dialog">
 						<template #trigger>
 							<NcButton
 								class="hint-icon"
@@ -106,34 +117,34 @@
 				</div>
 				<SharingInput
 					v-if="!loading && !config.sharingDialogEnabled"
-					:can-reshare="canReshare"
-					:file-info="fileInfo"
-					:link-shares="linkShares"
-					:is-external="true"
+					:canReshare="canReshare"
+					:fileInfo="fileInfo"
+					:linkShares="linkShares"
+					:isExternal="true"
 					:placeholder="externalShareInputPlaceholder"
 					:reshare="reshare"
 					:shares="shares"
-					@open-sharing-details="toggleShareDetailsView" />
+					@openSharingDetails="toggleShareDetailsView" />
 				<!-- Non link external shares list -->
 				<SharingList
 					v-if="!loading"
 					:shares="externalShares"
-					:file-info="fileInfo"
-					@open-sharing-details="toggleShareDetailsView" />
+					:fileInfo="fileInfo"
+					@openSharingDetails="toggleShareDetailsView" />
 				<!-- link shares list -->
 				<SharingLinkList
 					v-if="!loading && isLinkSharingAllowed"
 					ref="linkShareList"
-					:can-reshare="canReshare"
-					:file-info="fileInfo"
+					:canReshare="canReshare"
+					:fileInfo="fileInfo"
 					:shares="linkShares"
-					@open-sharing-details="toggleShareDetailsView" />
+					@openSharingDetails="toggleShareDetailsView" />
 			</section>
 
 			<section v-if="hasExternalSections && !showSharingDetailsView">
 				<div class="section-header">
 					<h4>{{ t('files_sharing', 'Additional shares') }}</h4>
-					<NcPopover popup-role="dialog">
+					<NcPopover popupRole="dialog">
 						<template #trigger>
 							<NcButton
 								class="hint-icon"
@@ -161,8 +172,8 @@
 				<SidebarTabExternalSectionLegacy
 					v-for="(section, index) in legacySections"
 					:key="index"
-					:file-info="fileInfo"
-					:section-callback="section"
+					:fileInfo="fileInfo"
+					:sectionCallback="section"
 					class="sharingTab__additionalContent" />
 
 				<!-- projects (deprecated as of NC25 (replaced by related_resources) - see instance config "projects.enabled" ; ignore this / remove it / move into own section) -->
@@ -181,9 +192,9 @@
 		<!-- share details -->
 		<SharingDetailsTab
 			v-if="showSharingDetailsView"
-			:file-info="shareDetailsData.fileInfo"
+			:fileInfo="shareDetailsData.fileInfo"
 			:share="shareDetailsData.share"
-			@close-sharing-details="toggleShareDetailsView"
+			@closeSharingDetails="toggleShareDetailsView"
 			@add:share="addShare"
 			@remove:share="removeShare" />
 	</div>
@@ -210,6 +221,7 @@ import SharingEntrySimple from '../components/SharingEntrySimple.vue'
 import SharingInput from '../components/SharingInput.vue'
 import SidebarTabExternalSection from '../components/SidebarTabExternal/SidebarTabExternalSection.vue'
 import SidebarTabExternalSectionLegacy from '../components/SidebarTabExternal/SidebarTabExternalSectionLegacy.vue'
+import UnifiedShareList from '../components/UnifiedShareList.vue'
 import SharingDetailsTab from './SharingDetailsTab.vue'
 import SharingInherited from './SharingInherited.vue'
 import SharingLinkList from './SharingLinkList.vue'
@@ -219,6 +231,7 @@ import Share from '../models/Share.ts'
 import Config from '../services/ConfigService.ts'
 import logger from '../services/logger.ts'
 import { openShareCreateDialog } from '../services/SharingDialog.ts'
+import { getSharesForNode } from '../services/unifiedShares.ts'
 import { shareWithTitle } from '../utils/SharedWithMe.js'
 
 const productName = window.OC.theme.productName
@@ -242,6 +255,7 @@ export default {
 		SharingDetailsTab,
 		SidebarTabExternalSection,
 		SidebarTabExternalSectionLegacy,
+		UnifiedShareList,
 	},
 
 	mixins: [ShareDetails],
@@ -267,6 +281,8 @@ export default {
 			shares: [],
 			linkShares: [],
 			externalShares: [],
+			// Flat list of unified-API shares (new sidebar), used when the dialog is enabled
+			unifiedShares: [],
 
 			legacySections: OCA.Sharing.ShareTabSections.getSections(),
 			sections: getSidebarSections(),
@@ -377,6 +393,10 @@ export default {
 		 * Get the existing shares infos
 		 */
 		async getShares() {
+			// New unified sidebar: a single flat list from the unified sharing API.
+			if (this.config.sharingDialogEnabled) {
+				return this.getUnifiedShares()
+			}
 			try {
 				this.loading = true
 
@@ -421,6 +441,25 @@ export default {
 		},
 
 		/**
+		 * Get the existing shares from the unified sharing API as one flat list.
+		 */
+		async getUnifiedShares() {
+			try {
+				this.loading = true
+				this.unifiedShares = await getSharesForNode(this.fileInfo.node)
+			} catch (error) {
+				if (error?.response?.data?.ocs?.meta?.message) {
+					this.error = error.response.data.ocs.meta.message
+				} else {
+					this.error = t('files_sharing', 'Unable to load the shares list')
+				}
+				logger.error('Error loading the unified shares list', error)
+			} finally {
+				this.loading = false
+			}
+		},
+
+		/**
 		 * Reset the current view to its default state
 		 */
 		resetState() {
@@ -431,6 +470,7 @@ export default {
 			this.shares = []
 			this.linkShares = []
 			this.externalShares = []
+			this.unifiedShares = []
 			this.showSharingDetailsView = false
 			this.shareDetailsData = {}
 		},
