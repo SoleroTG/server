@@ -4,7 +4,7 @@
 -->
 
 <template>
-	<div class="sharingTab" :class="{ 'icon-loading': loading }">
+	<div class="sharingTab" :class="{ 'icon-loading': loading && !config.sharingDialogEnabled }">
 		<!-- error message -->
 		<div v-if="error" class="emptycontent" :class="{ emptyContentWithSections: hasExternalSections }">
 			<div class="icon icon-error" />
@@ -42,11 +42,12 @@
 
 			<!-- Unified flat share list: all shares, ordered by permission -->
 			<section v-if="config.sharingDialogEnabled">
+				<UnifiedShareListSkeleton v-if="loading" />
 				<UnifiedShareList
-					v-if="!loading"
+					v-else
 					:shares="unifiedShares"
 					:fileInfo="fileInfo"
-					@refresh="getShares" />
+					@refresh="getUnifiedShares(false)" />
 				<!-- internal link copy -->
 				<SharingEntryInternal :fileInfo="fileInfo" />
 			</section>
@@ -222,6 +223,7 @@ import SharingInput from '../components/SharingInput.vue'
 import SidebarTabExternalSection from '../components/SidebarTabExternal/SidebarTabExternalSection.vue'
 import SidebarTabExternalSectionLegacy from '../components/SidebarTabExternal/SidebarTabExternalSectionLegacy.vue'
 import UnifiedShareList from '../components/UnifiedShareList.vue'
+import UnifiedShareListSkeleton from '../components/UnifiedShareListSkeleton.vue'
 import SharingDetailsTab from './SharingDetailsTab.vue'
 import SharingInherited from './SharingInherited.vue'
 import SharingLinkList from './SharingLinkList.vue'
@@ -256,6 +258,7 @@ export default {
 		SidebarTabExternalSection,
 		SidebarTabExternalSectionLegacy,
 		UnifiedShareList,
+		UnifiedShareListSkeleton,
 	},
 
 	mixins: [ShareDetails],
@@ -442,10 +445,16 @@ export default {
 
 		/**
 		 * Get the existing shares from the unified sharing API as one flat list.
+		 *
+		 * @param {boolean} showLoading Toggle the loading state (unmounts the
+		 *   list). Skipped on in-place refreshes so keyed rows keep their state
+		 *   (e.g. an expanded recipient group).
 		 */
-		async getUnifiedShares() {
+		async getUnifiedShares(showLoading = true) {
 			try {
-				this.loading = true
+				if (showLoading) {
+					this.loading = true
+				}
 				this.unifiedShares = await getSharesForNode(this.fileInfo.node)
 			} catch (error) {
 				if (error?.response?.data?.ocs?.meta?.message) {
