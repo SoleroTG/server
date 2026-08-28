@@ -71,7 +71,9 @@
 				v-show="expanded"
 				:key="recipient.class + recipient.value"
 				class="unified-share__recipient"
-				:title="recipient.display_name">
+				:title="recipient.display_name"
+				:subtitle="permissionSubtitle"
+				force-menu>
 				<template #avatar>
 					<NcAvatar
 						:size="32"
@@ -79,11 +81,11 @@
 						:user="isNoUserRecipient(recipient) ? undefined : recipient.value"
 						:displayName="recipient.display_name" />
 				</template>
-				<NcActionButton :aria-label="t('files_sharing', 'Remove recipient')" @click="removeOne(recipient)">
+				<NcActionButton :aria-label="t('files_sharing', 'Remove participant')" @click="removeOne(recipient)">
 					<template #icon>
-						<CloseIcon :size="20" />
+						<DeleteIcon :size="20" />
 					</template>
-					{{ t('files_sharing', 'Remove recipient') }}
+					{{ t('files_sharing', 'Remove participant') }}
 				</NcActionButton>
 			</SharingEntrySimple>
 		</template>
@@ -98,7 +100,6 @@ import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
-import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import AvatarStack from './AvatarStack.vue'
@@ -115,7 +116,6 @@ export default {
 		AvatarStack,
 		ChevronDownIcon,
 		ChevronRightIcon,
-		CloseIcon,
 		DeleteIcon,
 		NcActionButton,
 		NcAvatar,

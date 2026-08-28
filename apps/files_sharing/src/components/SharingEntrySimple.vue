@@ -19,6 +19,7 @@
 			ref="actionsComponent"
 			class="sharing-entry__actions"
 			menu-align="right"
+			:force-menu="forceMenu"
 			:aria-expanded="ariaExpandedValue">
 			<slot />
 		</NcActions>
@@ -54,6 +55,13 @@ export default {
 		ariaExpanded: {
 			type: Boolean,
 			default: null,
+		},
+
+		// Force the overflow menu even with a single action (keeps destructive
+		// actions in a menu instead of rendering them inline).
+		forceMenu: {
+			type: Boolean,
+			default: false,
 		},
 	},
 
