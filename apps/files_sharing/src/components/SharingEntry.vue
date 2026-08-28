@@ -45,35 +45,39 @@
 				<DotsHorizontalIcon :size="20" />
 			</template>
 		</NcButton>
-		<!-- Unified dialog: edit + delete as a simple dual button -->
-		<template v-else-if="config.sharingDialogEnabled">
-			<NcButton
+		<!-- Unified dialog: edit + delete in a menu (destructive stays in a menu) -->
+		<NcActions
+			v-else-if="config.sharingDialogEnabled"
+			class="sharing-entry__action"
+			menu-align="right"
+			:aria-label="t('files_sharing', 'Share actions')">
+			<NcActionButton
 				v-if="share.canEdit"
-				class="sharing-entry__action"
 				:aria-label="t('files_sharing', 'Edit share')"
-				variant="tertiary"
 				@click="openEditDialog">
 				<template #icon>
 					<PencilIcon :size="20" />
 				</template>
-			</NcButton>
-			<NcButton
+				{{ t('files_sharing', 'Edit share') }}
+			</NcActionButton>
+			<NcActionButton
 				v-if="share.canDelete"
-				class="sharing-entry__action"
 				:aria-label="t('files_sharing', 'Delete share')"
-				variant="tertiary"
 				@click="confirmDelete">
 				<template #icon>
 					<DeleteIcon :size="20" />
 				</template>
-			</NcButton>
-		</template>
+				{{ t('files_sharing', 'Delete share') }}
+			</NcActionButton>
+		</NcActions>
 	</li>
 </template>
 
 <script>
 import { DialogBuilder } from '@nextcloud/dialogs'
 import { ShareType } from '@nextcloud/sharing'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
@@ -91,6 +95,8 @@ export default {
 	name: 'SharingEntry',
 
 	components: {
+		NcActionButton,
+		NcActions,
 		NcButton,
 		NcAvatar,
 		DeleteIcon,
