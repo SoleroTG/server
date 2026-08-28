@@ -6,9 +6,10 @@
 <template>
 	<div class="avatar-stack">
 		<NcAvatar
-			v-for="recipient in displayed"
+			v-for="(recipient, index) in displayed"
 			:key="recipient.class + recipient.value"
 			class="avatar-stack__avatar"
+			:style="{ zIndex: displayed.length - index }"
 			:size="32"
 			:isNoUser="isNoUserRecipient(recipient)"
 			:user="isNoUserRecipient(recipient) ? undefined : recipient.value"
@@ -67,6 +68,9 @@ export default {
 		// matching the avatars in the other entries.
 		box-shadow: 0 0 0 2px var(--color-main-background);
 		border-radius: 50%;
+		// Each avatar sits under the previous one (first on top); z-index is set
+		// inline, descending, so the ring overlaps correctly.
+		position: relative;
 
 		&:not(:first-child) {
 			margin-inline-start: -12px;
