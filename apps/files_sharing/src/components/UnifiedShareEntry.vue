@@ -38,7 +38,8 @@
 				:subtitle="reshareLine"
 				:aria-expanded="expanded">
 				<template #avatar>
-					<AvatarStack :recipients="recipients" />
+					<!-- Collapsed: show the stack; expanded: avatars live in the list -->
+					<AvatarStack v-if="!expanded" :recipients="recipients" />
 				</template>
 				<template #action>
 					<NcButton
@@ -140,7 +141,8 @@ export default {
 
 	data() {
 		return {
-			expanded: false,
+			// Expanded by default; collapse is optional (e.g. long lists).
+			expanded: true,
 		}
 	},
 
