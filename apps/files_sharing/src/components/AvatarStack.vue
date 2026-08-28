@@ -63,7 +63,9 @@ export default {
 	align-items: center;
 
 	&__avatar {
-		border: 2px solid var(--color-main-background);
+		// Ring via box-shadow (not border) so the avatar stays exactly 32px,
+		// matching the avatars in the other entries.
+		box-shadow: 0 0 0 2px var(--color-main-background);
 		border-radius: 50%;
 
 		&:not(:first-child) {

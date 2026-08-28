@@ -12,6 +12,8 @@
 				{{ subtitle }}
 			</p>
 		</div>
+		<!-- Standalone action(s) shown before the overflow menu (e.g. a caret) -->
+		<slot name="action" />
 		<NcActions
 			v-if="$slots['default']"
 			ref="actionsComponent"

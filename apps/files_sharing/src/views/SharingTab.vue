@@ -682,6 +682,11 @@ export default {
 	&__content {
 		padding: 0 6px;
 
+		// Space between the big Share button and the list of shares below.
+		.sharingTab__share-button {
+			margin-block-end: 12px;
+		}
+
 		section {
 			padding-bottom: 16px;
 

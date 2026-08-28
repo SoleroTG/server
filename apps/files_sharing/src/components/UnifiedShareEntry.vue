@@ -40,10 +40,18 @@
 				<template #avatar>
 					<AvatarStack :recipients="recipients" />
 				</template>
-				<NcActionButton
-					:icon="expanded ? 'icon-triangle-n' : 'icon-triangle-s'"
-					:aria-label="t('files_sharing', 'Toggle recipients')"
-					@click.prevent.stop="expanded = !expanded" />
+				<template #action>
+					<NcButton
+						variant="tertiary"
+						:aria-label="t('files_sharing', 'Toggle recipients')"
+						:aria-expanded="expanded"
+						@click="expanded = !expanded">
+						<template #icon>
+							<ChevronDownIcon v-if="expanded" :size="20" />
+							<ChevronRightIcon v-else :size="20" />
+						</template>
+					</NcButton>
+				</template>
 				<NcActionButton :aria-label="t('files_sharing', 'Edit share')" @click="openEditDialog">
 					<template #icon>
 						<PencilIcon :size="20" />
@@ -87,6 +95,9 @@ import { DialogBuilder } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
+import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
@@ -102,10 +113,13 @@ export default {
 
 	components: {
 		AvatarStack,
+		ChevronDownIcon,
+		ChevronRightIcon,
 		CloseIcon,
 		DeleteIcon,
 		NcActionButton,
 		NcAvatar,
+		NcButton,
 		PencilIcon,
 		SharingEntrySimple,
 	},
@@ -225,6 +239,11 @@ export default {
 
 <style lang="scss" scoped>
 .unified-share {
+	// Unify every share row to 52px.
+	:deep(.sharing-entry) {
+		min-height: 52px;
+	}
+
 	&__recipient {
 		padding-inline-start: 24px;
 	}
